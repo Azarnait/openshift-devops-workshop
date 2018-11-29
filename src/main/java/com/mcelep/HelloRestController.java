@@ -9,7 +9,7 @@ public class HelloRestController {
 
     @RequestMapping(path = "/hello", method = RequestMethod.GET)
     public String index() {
-        return "Hello World " + readEnvironmentVariable() + " ! Sam&Tarik&Michi&Andreas";
+        return "Hello World " + readEnvironmentVariable() + " ! Sam&Tarik&Michi&Andreas&Slim";
     }
 
     private String readEnvironmentVariable(){
