@@ -1,0 +1,220 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  creationTimestamp: null
+  name: "${APP_NAME}"
+objects:
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftWebConsole
+    creationTimestamp: null
+    labels:
+      app: "${APP_NAME}"
+    name: "${APP_NAME}"
+  spec:
+    ports:
+    - name: 8080-tcp
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    selector:
+      deploymentconfig: "${APP_NAME}"
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: build.openshift.io/v1
+  kind: BuildConfig
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftWebConsole
+    creationTimestamp: null
+    labels:
+      app: "${APP_NAME}"
+    name: "${APP_NAME}"
+  spec:
+    nodeSelector: null
+    output:
+      to:
+        kind: ImageStreamTag
+        name: "${APP_NAME}:latest"
+    postCommit: {}
+    resources: {}
+    runPolicy: Serial
+    source:
+      git:
+        ref: master
+        uri: https://github.com/Azarnait/openshift-devops-workshop.git
+      type: Git
+    strategy:
+      sourceStrategy:
+        from:
+          kind: ImageStreamTag
+          name: java:8
+          namespace: openshift
+      type: Source
+    triggers:
+    - imageChange: {}
+      type: ImageChange
+    - type: ConfigChange
+    - generic:
+        secret: cd137ff27547be7e
+      type: Generic
+    - github:
+        secret: 8390c02e9f4a7ab3
+      type: GitHub
+  status:
+    lastVersion: 0
+- apiVersion: apps.openshift.io/v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftWebConsole
+    creationTimestamp: null
+    generation: 10
+    labels:
+      app: "${APP_NAME}"
+    name: "${APP_NAME}"
+  spec:
+    replicas: 1
+    selector:
+      deploymentconfig: "${APP_NAME}"
+    strategy:
+      activeDeadlineSeconds: 21600
+      resources: {}
+      rollingParams:
+        intervalSeconds: 1
+        maxSurge: 25%
+        maxUnavailable: 25%
+        timeoutSeconds: 600
+        updatePeriodSeconds: 1
+      type: Rolling
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          app: "${APP_NAME}"
+          deploymentconfig: "${APP_NAME}"
+      spec:
+        containers:
+        - image: "docker-registry.default.svc:5000/${PROJECT_NAME}/${APP_NAME}@sha256:4ee60c30d0d8f57d28e02a386678fc68ae943b23d99ab68cbcbc9f67a644ae03"
+          imagePullPolicy: Always
+          name: "${APP_NAME}"
+          ports:
+          - containerPort: 8080
+            protocol: TCP
+          - containerPort: 8443
+            protocol: TCP
+          - containerPort: 8778
+            protocol: TCP
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+    test: false
+    triggers:
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - "${APP_NAME}"
+        from:
+          kind: ImageStreamTag
+          name: "${APP_NAME}:latest"
+          namespace: "${PROJECT_NAME}"
+        lastTriggeredImage: "docker-registry.default.svc:5000/${PROJECT_NAME}/${APP_NAME}@sha256:4ee60c30d0d8f57d28e02a386678fc68ae943b23d99ab68cbcbc9f67a644ae03"
+      type: ImageChange
+    - type: ConfigChange
+  status:
+    availableReplicas: 0
+    latestVersion: 0
+    observedGeneration: 0
+    replicas: 0
+    unavailableReplicas: 0
+    updatedReplicas: 0
+- apiVersion: image.openshift.io/v1
+  kind: ImageStream
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftWebConsole
+    creationTimestamp: null
+    generation: 1
+    labels:
+      app: "${APP_NAME}"
+    name: "${APP_NAME}"
+  spec:
+    lookupPolicy:
+      local: false
+    tags:
+    - annotations: null
+      from:
+        kind: DockerImage
+        name: "docker-registry.default.svc:5000/${PROJECT_NAME}/${APP_NAME}:latest"
+      generation: null
+      importPolicy: {}
+      name: latest
+      referencePolicy:
+        type: ""
+  status:
+    dockerImageRepository: ""
+- apiVersion: image.openshift.io/v1
+  kind: ImageStream
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftNewBuild
+    creationTimestamp: null
+    generation: 1
+    labels:
+      build: openshift-devops-workshop
+      app: "${APP_NAME}"
+    name: openshift-devops-workshop
+  spec:
+    lookupPolicy:
+      local: false
+  status:
+    dockerImageRepository: ""
+- apiVersion: route.openshift.io/v1
+  kind: Route
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftWebConsole
+      openshift.io/host.generated: "true"
+    creationTimestamp: null
+    labels:
+      app: "${APP_NAME}"
+    name: "${APP_NAME}"
+  spec:
+    host: "${APP_NAME}-${PROJECT_NAME}.apps.credit-suisse-cd17.openshiftworkshop.com"
+    port:
+      targetPort: 8080-tcp
+    to:
+      kind: Service
+      name: "${APP_NAME}"
+      weight: 100
+    wildcardPolicy: None
+  status:
+    ingress:
+    - conditions:
+      - lastTransitionTime: 2018-11-29T13:58:50Z
+        status: "True"
+        type: Admitted
+      host: "${APP_NAME}-${PROJECT_NAME}.apps.credit-suisse-cd17.openshiftworkshop.com"
+      routerName: router
+      wildcardPolicy: None
+parameters:
+  - name: APP_NAME
+    displayName: The application namespace
+    description: ....
+    required: true
+  - name: PROJECT_NAME
+    displayName: The project namespace
+    description: ....
+    required: true
